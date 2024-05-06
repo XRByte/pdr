@@ -7,7 +7,7 @@ import time
 
 #read KLM.in file
 
-cvode_dir  = "/usr/local/cvode-5.7.0"
+cvode_dir  = "/usr/local/cvode-6.2.0"
 input_file = "examples.in"
 dir_out = os.path.dirname(os.getcwd()) + "/"
 

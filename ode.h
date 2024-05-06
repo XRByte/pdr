@@ -8,7 +8,7 @@
 #include <nvector/nvector_serial.h> /* N_Vector type*/
 #include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix  */
 #include <stdio.h>
-#include "sundial.h" /*Ith IJth macro and CheckFlag function*/
+#include "sundial.h" /*CheckFlag function*/
 class Ode {
   friend class CvodeDense;
   public:
@@ -25,7 +25,7 @@ class Ode {
      *Note that user_data is always set to pointer to Ode class.*/
     virtual void WriteStat (FILE *pf) const;
     static int wrapJac(const realtype t,
-                       const N_Vector y, const N_Vector fy, 
+                       const N_Vector y, const N_Vector fy,
                        SUNMatrix J, void *user_data,
                        N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
     static int wrapRHS(const realtype t, const N_Vector y,
@@ -41,7 +41,7 @@ class Ode {
                    N_Vector ydot) = 0;
     /*Jacobian*/
     virtual int Jac(const realtype t,
-                    const N_Vector y, const N_Vector fy, 
+                    const N_Vector y, const N_Vector fy,
                     SUNMatrix J, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) = 0;
   protected:
     /*status of ODE. Note the the ODE solver will change this. */

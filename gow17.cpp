@@ -291,9 +291,6 @@ gow17::gow17()
    fCplusCR_(1.),
    fHeplusgr_(1.)
 {
-  y_ = N_VNew_Serial(kDimen); /* Create serial vector y*/
-  CheckFlag((void *)y_, "N_VNew_Serial", 0);
-
 	/*Default values of physical parameters*/
   Zg_ = 1.;
   Zd_ = 1.;
@@ -315,8 +312,6 @@ gow17::gow17()
 }
 
 gow17::~gow17() {
-  /* destroy serial vector y*/
-  N_VDestroy_Serial(y_);
 }
 
 /*-------------------------RHS and Jac-----------------------------*/

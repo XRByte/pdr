@@ -1,6 +1,6 @@
 #include "cvodeDense.h"
 
-CvodeDense::CvodeDense(Ode &ode, 
+CvodeDense::CvodeDense(Ode &ode,
                        const double reltol, const double *abstol,
 											 const bool userJac)
     :ode_(ode),
@@ -8,6 +8,7 @@ CvodeDense::CvodeDense(Ode &ode,
      reltol_(reltol),
      abstol_(NULL),
      cvode_mem_(NULL),
+     sunctx_(NULL),
      dense_matrix_(NULL),
      dense_ls_(NULL),
      t_solve_(0.),
@@ -15,17 +16,24 @@ CvodeDense::CvodeDense(Ode &ode,
      nst_last_(0),
      nst_eq_(0) {
   int flag;
+  // Create the SUNDIALS context
+  flag = SUNContext_Create(NULL, &sunctx_);
+  CheckFlag(&flag, "SUNContext_Create", 1);
+  //create vector y
+  ode_.y_ = N_VNew_Serial(kDimen, sunctx_);
+  CheckFlag(static_cast<void *>(ode_.y_), "N_VNew_Serial", 0);
+
   /* -----------Initialize absolute value vector----------*/
-  abstol_ = N_VNew_Serial(kDimen);
-  CheckFlag((void *)abstol_, "N_VNew_Serial", 0);
+  abstol_ = N_VNew_Serial(kDimen, sunctx_);
+  CheckFlag(static_cast<void *>(abstol_), "N_VNew_Serial", 0);
   for (int i=0; i<kDimen; i++) {
     NV_Ith_S(abstol_, i) = abstol[i];
   }
 
   /* ----------------Intialize solver---------------------*/
-  /* Call CVodeCreate to create the solver memory and specify the 
+  /* Call CVodeCreate to create the solver memory and specify the
    * Backward Differentiation Formula and the use of a Newton iteration */
-  cvode_mem_ = CVodeCreate(CV_BDF);
+  cvode_mem_ = CVodeCreate(CV_BDF, sunctx_);
   CheckFlag((void *)cvode_mem_, "CVodeCreate", 0);
 
   /* Set the user data pointer to ode*/
@@ -35,7 +43,7 @@ CvodeDense::CvodeDense(Ode &ode,
   /* Call CVodeInit to initialize the integrator memory and specify the
    * user's right hand side function in y'=f(t,y), the inital time T0, and
    * the initial dependent variable vector y. */
-  flag = CVodeInit(cvode_mem_, ode_.wrapRHS, 
+  flag = CVodeInit(cvode_mem_, ode_.wrapRHS,
                    ode_.t_, ode_.y_);
   CheckFlag(&flag, "CVodeInit", 1);
 
@@ -49,21 +57,21 @@ CvodeDense::CvodeDense(Ode &ode,
   //CheckFlag(&flag, "CVDense", 1);
 
   /* Create dense SUNMatrix for use in linear solves */
-  dense_matrix_ = SUNDenseMatrix(kDimen, kDimen);
+  dense_matrix_ = SUNDenseMatrix(kDimen, kDimen, sunctx_);
   CheckFlag((void *)dense_matrix_, "SUNDenseMatrix", 0);
 
   /* Create dense SUNLinearSolver object for use by CVode */
-  dense_ls_ = SUNDenseLinearSolver(ode_.y_, dense_matrix_);
+  dense_ls_ = SUNLinSol_Dense(ode_.y_, dense_matrix_, sunctx_);
   CheckFlag((void *)dense_ls_, "SUNDenseLinearSolver", 0);
 
-  /* Call CVDlsSetLinearSolver to attach the matrix and linear solver to CVode */
-  flag = CVDlsSetLinearSolver(cvode_mem_, dense_ls_, dense_matrix_);
-  CheckFlag(&flag, "CVDlsSetLinearSolver", 1);
+  /* Call CVodeSetLinearSolver to attach the matrix and linear solver to CVode */
+  flag = CVodeSetLinearSolver(cvode_mem_, dense_ls_, dense_matrix_);
+  CheckFlag(&flag, "CVodeSetLinearSolver", 1);
 
   /* Set the Jacobian routine to Jac (user-supplied) */
 	if (userJac) {
-		flag = CVDlsSetJacFn(cvode_mem_, ode_.wrapJac);
-		CheckFlag(&flag, "CVDlsSetJacFn", 1);
+		flag = CVodeSetJacFn(cvode_mem_, ode_.wrapJac);
+		CheckFlag(&flag, "CVodeSetJacFn", 1);
 	}
 }
 
@@ -97,10 +105,18 @@ void CvodeDense::SetInitStep(const double hinit) {
 
 
 CvodeDense::~CvodeDense() {
+  /* destroy vector y*/
+  N_VDestroy(ode_.y_);
   /*Free abstol_ vector*/
-  N_VDestroy_Serial(abstol_);
+  N_VDestroy(abstol_);
   /* Free integrator memory */
   CVodeFree(&cvode_mem_);
+  // Free linear solver memory
+  SUNLinSolFree(dense_ls_);
+  // Free matrix memory
+  SUNMatDestroy(dense_matrix_);
+  // Free SUNDIALS context
+  SUNContext_Free(&sunctx_);
 }
 
 void CvodeDense::Solve(const double tfinal) {
@@ -111,16 +127,16 @@ void CvodeDense::Solve(const double tfinal) {
                CV_NORMAL);
   CheckFlag(&flag, "CVode", 3);
   t = clock() - t;
-  t_solve_ = ((float)t)/CLOCKS_PER_SEC; /*record the run time*/ 
+  t_solve_ = ((float)t)/CLOCKS_PER_SEC; /*record the run time*/
   nst_last_ = GetNstep() - nst;
   /*floor small negative abundances to avoid numerical problems*/
   /*TODO: adjust species abundances to conserve the elements*/
   for (int i=0; i<kDimen; i++) {
     if ( NV_Ith_S(ode_.y_, i) < 0. ) {
       printf("Warning: correcting negative aboundances of species ");
-      //printf("%d from %0.4e to abstol_[i] = %0.4e.\n", i,  
+      //printf("%d from %0.4e to abstol_[i] = %0.4e.\n", i,
       //       NV_Ith_S(ode_.y_, i), NV_Ith_S(abstol_, i));
-      printf("%d from %0.4e to zero.\n", i,  
+      printf("%d from %0.4e to zero.\n", i,
              NV_Ith_S(ode_.y_, i));
       //NV_Ith_S(ode_.y_, i) = NV_Ith_S(abstol_, i);
       NV_Ith_S(ode_.y_, i) = 0.;
@@ -139,7 +155,7 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
   }
 
   /* Guess the time toward equalibrium.
-   *  To make a guess, we compute dx/dt at the initial conditions and at a point 
+   *  To make a guess, we compute dx/dt at the initial conditions and at a point
    *  slightly perturbed from them, and then use the most restrictive timestep we find.
    *  We also require the minmum time of 10yr=3.16e8s and maximum time of
    *  tmax/10 */
@@ -151,13 +167,13 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
   double dt1 = tevol_max;
   double dt2 = tevol_max;
   double tevol = 0.;
-  N_Vector ydot = N_VNew_Serial(kDimen);
-  N_Vector ypert = N_VNew_Serial(kDimen);
+  N_Vector ydot = N_VNew_Serial(kDimen, sunctx_);
+  N_Vector ypert = N_VNew_Serial(kDimen, sunctx_);
   /* get the minimum component of dt1, restrict to be smaller than tevol_max*/
   ode_.RHS(ode_.t_, ode_.y_, ydot);
   for (int i=0; i<kDimen; i++) {
-    dt1 = std::min( dt1, fabs( 
-               ( NV_Ith_S(ode_.y_, i) + NV_Ith_S(abstol_, i) )  
+    dt1 = std::min( dt1, fabs(
+               ( NV_Ith_S(ode_.y_, i) + NV_Ith_S(abstol_, i) )
                 / ( NV_Ith_S(ydot, i) + small__ ) )
                   );
   }
@@ -169,8 +185,8 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
    * than tevol_max*/
   ode_.RHS(ode_.t_+dt1, ypert, ydot);
   for (int i=0; i<kDimen; i++) {
-    dt2 = std::min( dt2, fabs( 
-               ( NV_Ith_S(ypert, i) + NV_Ith_S(abstol_, i) )  
+    dt2 = std::min( dt2, fabs(
+               ( NV_Ith_S(ypert, i) + NV_Ith_S(abstol_, i) )
                 / ( NV_Ith_S(ydot, i) + small__ ) )
                   );
   }
@@ -183,11 +199,11 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
   }
 
   /*destroy created vectors*/
-  N_VDestroy_Serial(ydot);
-  N_VDestroy_Serial(ypert);
+  N_VDestroy(ydot);
+  N_VDestroy(ypert);
 
   /*find equalibrium.*/
-  N_Vector yprev = N_VNew_Serial(kDimen);
+  N_Vector yprev = N_VNew_Serial(kDimen, sunctx_);
   double err[kDimen];
   double maxerr;
   clock_t t = clock();
@@ -196,7 +212,7 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
 		/*reinitialize ode*/
 		flag = CVodeReInit(cvode_mem_, ode_.t_, ode_.y_);
 		CheckFlag(&flag, "CVodeReInit", 1);
-		
+
     /*copy y to yprev*/
     for (int i=0; i<kDimen; i++) {
       NV_Ith_S(yprev, i) = NV_Ith_S(ode_.y_, i);
@@ -205,7 +221,7 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
     Solve(ode_.t_ + tevol);
     /*Calculate the relative differences of y from last timestep*/
     for (int i=0; i<kDimen; i++) {
-      err[i] = fabs(  NV_Ith_S(ode_.y_, i) / ( NV_Ith_S(yprev, i) + small__ ) 
+      err[i] = fabs(  NV_Ith_S(ode_.y_, i) / ( NV_Ith_S(yprev, i) + small__ )
           - 1.  );
       /*not consider aboundances below 10 times absolute tolerance*/
       if ( NV_Ith_S(ode_.y_, i) < 10*NV_Ith_S(abstol_, i) ) {
@@ -219,19 +235,19 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
               ode_.t_ - tevol, ode_.t_, maxerr);
     }
     if ( maxerr < reltol_*tolfac ) {
-      N_VDestroy_Serial(yprev);
+      N_VDestroy(yprev);
       t = clock() - t;
-      t_solve_eq_ = ((float)t)/CLOCKS_PER_SEC; /*record the run time*/ 
+      t_solve_eq_ = ((float)t)/CLOCKS_PER_SEC; /*record the run time*/
       nst_eq_ = GetNstep() - nst;
       return;
     }
     if (tevol > tevol_max) {
-      N_VDestroy_Serial(yprev);
+      N_VDestroy(yprev);
       t = clock() - t;
-      t_solve_eq_ = ((float)t)/CLOCKS_PER_SEC; /*record the run time*/ 
+      t_solve_eq_ = ((float)t)/CLOCKS_PER_SEC; /*record the run time*/
       nst_eq_ = GetNstep() - nst;
       printf(
-			 "Warning: not reaching equalibrium in tevol_max, residual=%0.4e.\n", 
+			 "Warning: not reaching equalibrium in tevol_max, residual=%0.4e.\n",
 			 maxerr);
       return;
     }
@@ -239,7 +255,7 @@ void CvodeDense::SolveEq(const double tolfac, const double tmax,
   }
 
 }
-  
+
 void CvodeDense::PrintStats() const {
   long int nst, nfe, nsetups, nje, nfeLS, nni, ncfn, netf, nge;
   int flag;
@@ -257,10 +273,10 @@ void CvodeDense::PrintStats() const {
   flag = CVodeGetNumNonlinSolvConvFails(cvode_mem_, &ncfn);
   CheckFlag(&flag, "CVodeGetNumNonlinSolvConvFails", 1);
 
-  flag = CVDlsGetNumJacEvals(cvode_mem_, &nje);
-  CheckFlag(&flag, "CVDlsGetNumJacEvals", 1);
-  flag = CVDlsGetNumRhsEvals(cvode_mem_, &nfeLS);
-  CheckFlag(&flag, "CVDlsGetNumRhsEvals", 1);
+  flag = CVodeGetNumJacEvals(cvode_mem_, &nje);
+  CheckFlag(&flag, "CVodeGetNumJacEvals", 1);
+  flag = CVodeGetNumLinRhsEvals(cvode_mem_, &nfeLS);
+  CheckFlag(&flag, "CVodeGetNumLinRhsEvals", 1);
 
   flag = CVodeGetNumGEvals(cvode_mem_, &nge);
   CheckFlag(&flag, "CVodeGetNumGEvals", 1);

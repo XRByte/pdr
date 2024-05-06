@@ -15,11 +15,11 @@
 #include <time.h> /*clock_t, clock, CLOCKS_PER_SEC*/
 #include <algorithm>    /*std::max, std::max_element*/
 #include "ode.h"
-#include "sundial.h" /*Ith, IJth macro and CheckFlag function*/
+#include "sundial.h" /*CheckFlag function*/
 
 class CvodeDense {
   public:
-    CvodeDense(Ode &ode, 
+    CvodeDense(Ode &ode,
                const double reltol, const double *abstol,
 							 const bool userJac=false);
     ~CvodeDense();
@@ -39,7 +39,7 @@ class CvodeDense {
      * tolfac: conservative factor of tolerance, default 10. The real torlerance
      *      is set as the relative torlerance times the tolfac.
      * tmax: maximum time for reaching equalibrium, default 3.16e13 s or * * 1Myr.*/
-    void SolveEq(const double tolfac=10, const double tmax=3.16e13, 
+    void SolveEq(const double tolfac=10, const double tmax=3.16e13,
                  const bool verbose=false, const double tmin=3.16e10);
     void PrintStats() const;
     /*write t_solve_ and t_solve_eq to file*/
@@ -62,14 +62,15 @@ class CvodeDense {
     const int kDimen;
     realtype reltol_;
     N_Vector abstol_;
+    SUNContext sunctx_;
     SUNMatrix dense_matrix_;
     SUNLinearSolver dense_ls_;
     void *cvode_mem_;
-    /*record the run time and number of steps for the last time calling CVode 
+    /*record the run time and number of steps for the last time calling CVode
      * solver in Solve function.*/
     double t_solve_;
     long int nst_last_;
-    /*recored the run time and number of steps for the last time calling SolveEq 
+    /*recored the run time and number of steps for the last time calling SolveEq
      * to evolve to equalibrium.*/
     double t_solve_eq_;
     long int nst_eq_;

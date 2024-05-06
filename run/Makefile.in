@@ -7,7 +7,7 @@ sourcedir    = $(shell dirname $$PWD)/
 
 CPP      = g++
 #CFLAGS = -Wall -g3 -O0 -ggdb
-CFLAGS = -Wall -O3
+CFLAGS = -Wall -O3 -std=c++11
 LIBS     = -lm 
 
 INCLUDES = -I$(includedir) -I$(sourcedir)

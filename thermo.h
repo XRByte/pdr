@@ -136,6 +136,18 @@ class Thermo {
     static double CoolingH2(const double xH2, const double nHI, const double nH2,
                      const double nHe, const double nHplus, const double ne,
                      const double T);
+    /* Cooling by H2 vibration and rotation lines from Mosely+21. For reference.
+     * Collision species: HI, H2, He, e. x_e=1.6e-4=constant
+     * Note: implemented by JGK in TIGRESS-NCR. Not used here , for reference
+     * ortho to para ration of H2 is 0.7.
+     * Auguments:
+     * xH2 = nH2 / nH
+     * ni: number density of species i, in cm^-3
+     * T: temperature in K
+     * Return:
+     * Cooling rate for H2 vibrational and rotational lines in erg H^-1 s^-1 */
+    static double CoolingH2_M21(const double xH2, const double xHI,
+                                const double nH, const double T);
     /* Cooling by dust thermo emission.
      * Tabulated from Despotic.
      * dedt_dust = L_CMB - G_dust, thermo - PsiGD = 0

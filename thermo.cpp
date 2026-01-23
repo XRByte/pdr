@@ -391,7 +391,8 @@ double Thermo::CoolingCOR(const double xCO, const double nHI, const double nH2,
 double Thermo::CoolingH2(const double xH2, const double nHI, const double nH2,
                          const double nHe, const double nHplus, const double ne,
                          const double temp) {
-  const double Tmax_H2 = 6000.; //maximum temperature above which use Tmax
+  //Setting Tmax_H2=1e4 after comparing Glover 15 to Mosely 21 results
+  const double Tmax_H2 = 1.e4; //maximum temperature above which use Tmax
   const double Tmin_H2 = 10.; //min temperature below which cut off cooling
   double T = 0;
   /* Note: limit extended to T< 10K and T>6000K*/
@@ -455,6 +456,35 @@ double Thermo::CoolingH2(const double xH2, const double nHI, const double nH2,
   /* Total cooling rate*/
   const double Gamma_tot = Gamma_LTE / (1.0 + Gamma_LTE/Gamma_n0);
   return Gamma_tot * xH2;
+}
+
+double Thermo::CoolingH2_M21(const double xH2, const double xHI, const double nH, const double T) {
+
+  // Cooling by rotation-vibration lines of H2
+  // from Moseley et al. (2021), for reference. Not used by default
+  const double n1 = 50.0;
+  const double n2 = 450.0;
+  const double n3 = 25.0;
+  const double n4 = 900;
+  double T3 = T*1e-3;
+  double T3inv = 1.0/T3;
+  double nH2 = xH2*nH;
+  double nHI = xHI*nH;
+  double x1 = nHI + 5.0*nH2;
+  double x2 = nHI + 4.5*nH2;
+  double x3 = nHI + 0.75*nH2;
+  double x4 = nHI + 0.05*nH2;
+  double sqrtT3 = sqrt(T3);
+  double f1 = 1.1e-25*sqrtT3*exp(-0.51*T3inv)*
+    (0.7*x1/(1.0 + x1/n1) + 0.3*x1/(1.0 + x1/(10.0*n1)));
+  double f2 = 2.0e-25*T3*exp(-T3inv)*
+    (0.35*x2/(1.0 + x2/n2) + 0.65*x2/(1.0 + x2/(10.0*n2)));
+  double f3 = 2.4e-24*sqrtT3*T3*exp(-2.0*T3inv)*
+    (x3/(1.0 + x3/n3));
+  double f4 = 1.7e-23*sqrtT3*T3*exp(-4.0*T3inv)*
+    (0.45*x4/(1.0 + x4/n4) + 0.55*x4/(1.0 + x4/(10.0*n4)));
+
+  return xH2*(f1 + f2 + f3 + f4);
 }
 
 double Thermo::CoolingDust(const double Zd, const double nH, const double Tg,

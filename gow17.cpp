@@ -307,6 +307,7 @@ gow17::gow17()
   isNCOeff_global_ = false;
   isbCO_L_ = false;
   isCoolingCOThin_ = false;
+  iskgrH2_const_ = false;
 	Leff_CO_max_ = 3.0e20; //Maximum CO cooling length. default 100pc.
   gradv_ = 1.0e-14; /*0.3km/s /pc*/
 }
@@ -616,7 +617,7 @@ void gow17::ChemInit_(const double *y) {
 	/* Grain assisted recombination of H and H2*/
 	/*	 (0) *H + *H + gr -> H2 + gr , constant rate from Wolfire2008 and
    *	 Hollenbach 2012*/
-	kgr_[0] = 3.0e-17 * nH_ * Zd_;
+	kgr_[0] = get_kgr_H2_(T) * nH_ * Zd_;
 	/*	 (1) H+ + *e + gr -> *H + gr
    *	 (2) C+ + *e + gr -> *C + gr
    *   (3) He+ + *e + gr -> *He + gr
@@ -999,6 +1000,11 @@ void gow17::SetCoolingCOThin(const bool isCoolingCOThin) {
   return;
 }
 
+void gow17::SetkgrH2(const bool iskgrH2_const) {
+  iskgrH2_const_ = iskgrH2_const;
+  return;
+}
+
 double gow17::CII_rec_rate_(const double temp) {
   double A, B, T0, T1, C, T2, BN, term1, term2, alpharr, alphadr;
   A = 2.995e-9;
@@ -1014,6 +1020,22 @@ double gow17::CII_rec_rate_(const double temp) {
   alphadr = pow( temp, -3.0/2.0 ) * ( 6.346e-9 * exp(-1.217e1/temp) +
         9.793e-09 * exp(-7.38e1/temp) + 1.634e-06 * exp(-1.523e+04/temp) );
   return (alpharr+alphadr);
+}
+
+double gow17::get_kgr_H2_(const double temp){
+  //TIGRESS-NCR (Kim+23) implementation
+  double kgr;
+  const double kgr0 = 3.0e-17;
+  if (iskgrH2_const_) {
+    // Use temperature independent rate
+    kgr = kgr0;
+  } else {
+    // Use temperature dependent rate from Hollenbach & McKee (1979)
+    // Taking Tgr2 = 0 and renormalized to have kgr ~ kgr_H2 near 200>T>50
+    const double T2 = temp*1e-2;
+    kgr = kgr0 * sqrt(T2) * 2.0 / (1+0.4*sqrt(T2)+0.2*T2+0.08*T2*T2);
+  }
+  return kgr;
 }
 
 double gow17::GetxCtot() const {

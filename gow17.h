@@ -76,6 +76,7 @@ class gow17 : public Ode {
     /*Set to use global NCO for NCOeff or not*/
     void SetNCOeffGlobal(const bool isNCOeff_global);
     void SetCoolingCOThin(const bool isCoolingCOThin);
+    void SetkgrH2(const bool iskgrH2_const);
     /*Set to bCO as a function of length scale or not*/
     void SetbCOL(const bool isbCO_L);
 		void Leff_CO_max(const double Leff_CO_max);
@@ -157,6 +158,8 @@ class gow17 : public Ode {
     bool isbCO_L_;
     /*Set whether to use optically thin CO cooling (NCOeff = 0) */
     bool isCoolingCOThin_;
+    /* Set whether to use a constant H2 formation rate */
+    bool iskgrH2_const_;
     //Maximum CO cooling length. default 100pc.
     double Leff_CO_max_;
 
@@ -212,9 +215,11 @@ class gow17 : public Ode {
      * Return:
      * Rate of internal energy changing per H in erg s^-1 H^-1.
      */
+    double dEdt_(const double *y, const bool is_store_rates=true);
     /* calculate C+ + e RR and DR rates*/
     double CII_rec_rate_(const double temp);
-    double dEdt_(const double *y, const bool is_store_rates=true);
+    /* cakculate rate for H2 formation on dust grains */
+    double get_kgr_H2_(const double temp);
 		/*copy y and set the ghost species to yghost*/
 		void SetGhostSpec_(const N_Vector y, double yghost[kDimen+n_ghost_]);
 		/*Cosmic ray ionizations*/

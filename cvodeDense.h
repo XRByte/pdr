@@ -8,7 +8,6 @@
 #include <sundials/sundials_types.h> /* realtype type*/
 #include <nvector/nvector_serial.h> /* N_Vector type*/
 #include <cvode/cvode.h>            /* CVODE solver fcts., consts. */
-#include <cvode/cvode_direct.h>       /* prototype for CVDense */
 #include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
 #include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
 #include <math.h> /*fabs*/

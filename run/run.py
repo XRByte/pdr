@@ -7,7 +7,7 @@ import time
 
 #read KLM.in file
 
-cvode_dir  = "/usr/local/cvode-6.2.0"
+cvode_dir  = "/home/anish/.julia/artifacts/145769e808031099c56d4120c7090e563b440d35"
 input_file = "examples.in"
 dir_out = os.path.dirname(os.getcwd()) + "/"
 

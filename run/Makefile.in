@@ -7,11 +7,11 @@ sourcedir    = $(shell dirname $$PWD)/
 
 CPP      = g++
 #CFLAGS = -Wall -g3 -O0 -ggdb
-CFLAGS = -Wall -O3 -std=c++11
+CFLAGS = -Wall -O3 -std=c++11 -Drealtype=sunrealtype
 LIBS     = -lm 
 
 INCLUDES = -I$(includedir) -I$(sourcedir)
-LIBRARIES = -lsundials_cvode -lsundials_nvecserial $(LIBS)
+LIBRARIES = -lsundials_cvode -lsundials_nvecserial -lsundials_core $(LIBS)
 LINKFLAGS = -Wl,-rpath,$(libdir)
 
 #source files

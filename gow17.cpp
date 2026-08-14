@@ -264,7 +264,7 @@ gow17::gow17()
    isH2diss_heating_(true),
    isH2gr_heating_(true),
    isH2rv_cooling_(true),
-   isDust_cooling_(false),
+   isDust_cooling_(true),
    temp_(0.),
    LCR_(0.),
    LPE_(0.),

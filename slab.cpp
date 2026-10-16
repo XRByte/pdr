@@ -62,7 +62,7 @@ Slab::~Slab() {
 void Slab::WriteAbd(FILE *pf) {
 	for (int i=0; i<ngrid_; i++) {
 		for (int j=0; j<dimen_; j++) {
-			fprintf(pf, "%12.4e  ", y_[i][j]);
+			fprintf(pf, "%20.12e  ", y_[i][j]);
 		}
 		fprintf(pf, "\n");
 	}
@@ -71,7 +71,7 @@ void Slab::WriteAbd(FILE *pf) {
 void Slab::WriteThermoRates(FILE *pf) {
 	for (int i=0; i<ngrid_; i++) {
 		for (int j=0; j<nE_; j++) {
-			fprintf(pf, "%12.4e  ", yE_[i][j]);
+			fprintf(pf, "%20.12e  ", yE_[i][j]);
 		}
 		fprintf(pf, "\n");
 	}
@@ -162,7 +162,7 @@ void Slab::WritefShieldCOmol(FILE *pf) {
 
 void Slab::WriteNH(FILE *pf) {
 	for (int i=0; i<ngrid_; i++) {
-		fprintf(pf, "%12.4e  ", NH_arr_[i]);
+		fprintf(pf, "%20.12e  ", NH_arr_[i]);
 	}
 	fprintf(pf, "\n");
 }

@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 
-import numpy as np
 import os
 import subprocess
+import sys
 import time
 
-#read KLM.in file
+import numpy as np
 
-cvode_dir  = "/home/anish/.julia/artifacts/145769e808031099c56d4120c7090e563b440d35"
+# read KLM.in file
+
+cvode_dir = "/home/anish/.julia/artifacts/145769e808031099c56d4120c7090e563b440d35"
 input_file = "examples.in"
 dir_out = os.path.dirname(os.getcwd()) + "/"
 
-#read list of problems in input file
+# read list of problems in input file
 fin = open(input_file, "r")
 fprob = []
 exe = []
@@ -26,28 +28,27 @@ fin.close()
 
 nprob = len(fprob)
 
-#loop over each problem, do
-#(1) mkdir/cleanup output directory
-#(2) rewrite makefile
-#(3) call make to compile
-#(4) run in background
+# loop over each problem, do
+# (1) mkdir/cleanup output directory
+# (2) rewrite makefile
+# (3) call make to compile
+# (4) run in background
 for i in range(nprob):
-    #(1) mkdir/cleanup output directory
-    if os.path.isdir(dout_prob[i]):
-        command_clean = "rm {}/*".format(dout_prob[i])
-        print(command_clean)
-        proc1 = subprocess.Popen(command_clean, shell=True).wait()
-        #pid1, sts1 = os.waitpid(proc1.pid, 0)
-    else:
-        proc1 = subprocess.Popen("mkdir {}".format(dout_prob[i]),
-                shell=True).wait()
-        #pid1, sts1 = os.waitpid(proc1.pid, 0)
+    # (1) mkdir/cleanup output directory
+    # if os.path.isdir(dout_prob[i]):
+    #     command_clean = "rm {}/*".format(dout_prob[i])
+    #     print(command_clean)
+    #     proc1 = subprocess.Popen(command_clean, shell=True).wait()
+    #     # pid1, sts1 = os.waitpid(proc1.pid, 0)
+    # else:
+    #     proc1 = subprocess.Popen("mkdir {}".format(dout_prob[i]), shell=True).wait()
+    # pid1, sts1 = os.waitpid(proc1.pid, 0)
 
-    #(2) rewrite makefile
+    # (2) rewrite makefile
     fmakein = open("Makefile.in", "r")
     lines_makein = fmakein.readlines()
     fmakein.close()
-    fmake = open ("Makefile", "w")
+    fmake = open("Makefile", "w")
     fmake.write("prob = {}\n".format(fprob[i]))
     fmake.write("exe = {}\n".format(exe[i]))
     fmake.write("cvode_dir = {}\n".format(cvode_dir))
@@ -55,13 +56,14 @@ for i in range(nprob):
         fmake.write(l_makein)
     fmake.close()
 
-    #(3) call make to compile
+    # (3) call make to compile
     proc3 = subprocess.Popen("make", shell=True).wait()
-    #pid3, sts3 = os.waitpid(proc3.pid, 0)
+    # pid3, sts3 = os.waitpid(proc3.pid, 0)
+    print(sys.argv)
 
-    #(4) run in background
-    run_command = "./{}".format(exe[i])
+    # (4) run in background
+    run_command = [f"./{exe[i]}", *sys.argv[1:]]
     print(run_command)
     proc4 = subprocess.Popen(run_command)
     proc4.wait()
-    #pid4, sts4 = os.waitpid(proc4.pid, 0)
+    # pid4, sts4 = os.waitpid(proc4.pid, 0)

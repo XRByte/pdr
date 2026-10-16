@@ -12,3 +12,4 @@ out*
 *.pdf
 *Notes.bib
 *.DS_Store
+.venv

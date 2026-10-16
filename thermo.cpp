@@ -6,8 +6,8 @@ Thermo::Thermo(){}
 Thermo::~Thermo(){}
 
 /*physical constants*/
-const double Thermo::eV_ = 1.602e-12;
-const double Thermo::kb_ = 1.381e-16;
+const double Thermo::eV_ = 1.602177e-12; /*CODATA, as in jaff*/
+const double Thermo::kb_ = 1.380649e-16; /*CODATA, as in jaff*/
 const double Thermo::ca_ = 2.27e-4;
 const double Thermo::TCMB_ = 2.73;
 /*ortho to para ratio of H2*/
@@ -20,7 +20,7 @@ const double Thermo::sigmad10_ = 2.0e-25;/*DESPOTIC*/
 const double Thermo::alpha_GD_ = 3.2e-34;/*DESPOTIC*/
 /*----C+, 2 level system---*/
 const double Thermo::A10CII_ = 2.3e-6; /*Silva+Viegas2002*/
-const double Thermo::E10CII_ = 1.26e-14;
+const double Thermo::E10CII_ = kb_ * 91.21; /*E/k in K, as in jaff*/
 const double Thermo::g0CII_ = 2.;
 const double Thermo::g1CII_ = 4.;
 /*----HI, 2 level system---*/
@@ -35,9 +35,9 @@ const double Thermo::g2CI_ = 5;
 const double Thermo::A10CI_ = 7.880e-08;
 const double Thermo::A20CI_ = 1.810e-14;
 const double Thermo::A21CI_ = 2.650e-07;
-const double Thermo::E10CI_ = 3.261e-15;
-const double Thermo::E20CI_ = 8.624e-15;
-const double Thermo::E21CI_ = 5.363e-15;
+const double Thermo::E10CI_ = kb_ * 23.62;
+const double Thermo::E20CI_ = kb_ * 62.46;
+const double Thermo::E21CI_ = kb_ * (62.46 - 23.62);
 /*----OI, 3 level system---*/
 const double Thermo::g0OI_ = 5;
 const double Thermo::g1OI_ = 3;
@@ -45,9 +45,9 @@ const double Thermo::g2OI_ = 1;
 const double Thermo::A10OI_ = 8.910e-05;
 const double Thermo::A20OI_ = 1.340e-10;
 const double Thermo::A21OI_ = 1.750e-05;
-const double Thermo::E10OI_ = 3.144e-14;
-const double Thermo::E20OI_ = 4.509e-14;
-const double Thermo::E21OI_ = 1.365e-14;
+const double Thermo::E10OI_ = kb_ * 227.8;
+const double Thermo::E20OI_ = kb_ * 326.6;
+const double Thermo::E21OI_ = kb_ * (326.6 - 227.8);
 
 /*-----CO cooling table data, from Omukai+2010-----*/
 const double Thermo::TCO_[lenTCO_] = {10,	20,	30,	50,	80,	100,
@@ -391,8 +391,7 @@ double Thermo::CoolingCOR(const double xCO, const double nHI, const double nH2,
 double Thermo::CoolingH2(const double xH2, const double nHI, const double nH2,
                          const double nHe, const double nHplus, const double ne,
                          const double temp) {
-  //Setting Tmax_H2=1e4 after comparing Glover 15 to Mosely 21 results
-  const double Tmax_H2 = 1.e4; //maximum temperature above which use Tmax
+  const double Tmax_H2 = 6000.; //maximum temperature above which use Tmax
   const double Tmin_H2 = 10.; //min temperature below which cut off cooling
   double T = 0;
   /* Note: limit extended to T< 10K and T>6000K*/
@@ -408,6 +407,9 @@ double Thermo::CoolingH2(const double xH2, const double nHI, const double nH2,
   const double logT3_3 = logT3_2 * logT3;
   const double logT3_4 = logT3_3 * logT3;
   const double logT3_5 = logT3_4 * logT3;
+  const double logT3_6 = logT3_5 * logT3;
+  const double logT3_7 = logT3_6 * logT3;
+  const double logT3_8 = logT3_7 * logT3;
   double LHI, LH2, LHe, LHplus, Le;
   /* HI */
   if (T < 100) {
@@ -431,19 +433,23 @@ double Thermo::CoolingH2(const double xH2, const double nHI, const double nH2,
   LHe = pow(10, -2.3689237e1 +2.1892372e0*logT3
                 -0.81520438e0*logT3_2 +0.29036281e0*logT3_3
                 -0.16596184e0*logT3_4 +0.19191375e0*logT3_5);
-  /* H+ */
-  LHplus = pow(10, -2.1716699e1 +1.3865783e0*logT3
-                   -0.37915285e0*logT3_2 +0.11453688e0*logT3_3
-                   -0.23214154e0*logT3_4 +0.058538864e0*logT3_5);
-  /* e */
-  if (T < 200) {
-    Le = pow(10, -3.4286155e1 -4.8537163e1*logT3
-                 -7.7121176e1*logT3_2 -5.1352459e1*logT3_3
-                 -1.5169150e1*logT3_4 -0.98120322e0*logT3_5);
+  /* H+ (Glover 2015, Appendix A1) */
+  LHplus = pow(10, -2.2089523e1 +1.5714711e0*logT3
+                   +0.015391166e0*logT3_2 -0.23619985e0*logT3_3
+                   -0.51002221e0*logT3_4 +0.32168730e0*logT3_5);
+  /* e (Glover 2015, Appendix A1) */
+  if (T < 500) {
+    Le = pow(10, -2.1928796e1 + 1.6815730e1*logT3
+                 +9.6743155e1*logT3_2 +3.4319180e2*logT3_3
+                 +7.3471651e2*logT3_4 +9.8367576e2*logT3_5
+                 +8.0181247e2*logT3_6 +3.6414446e2*logT3_7
+                 +7.0609154e1*logT3_8);
   } else {
-    Le = pow(10, -2.2190316e1 +1.5728955e0*logT3
-                 -0.213351e0*logT3_2 +0.96149759e0*logT3_3
-                 -0.91023195e0*logT3_4 +0.13749749e0*logT3_5);
+    Le = pow(10, -2.2921189e1 +1.6802758e0*logT3
+                 +0.93310622e0*logT3_2 +4.0406627e0*logT3_3
+                 -4.7274036e0*logT3_4 -8.8077017e0*logT3_5
+                 +8.9167183*logT3_6 +6.4380698*logT3_7
+                 -6.3701156*logT3_8);
   }
   /* total cooling in low density limit*/
   const double Gamma_n0 = LHI*nHI + LH2*nH2 + LHe*nHe + LHplus*nHplus + Le*ne;

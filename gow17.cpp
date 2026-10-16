@@ -936,7 +936,7 @@ double gow17::dEdt_(const double *y, const bool is_store_rates) {
   //const double GDust = Thermo::CoolingDust(Zd_,  nH_, T, (*GISRF_));
   double GDust;
   if (isDust_cooling_) {
-    GDust = Thermo::CoolingDustTd(Zd_,  nH_, T, 10.);
+    GDust = Thermo::CoolingDust(Zd_,  nH_, T, (*GISRF_));
   } else {
     GDust = 0.;
   }
